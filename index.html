@@ -159,7 +159,7 @@
 <body>
 <header>
   <h2>MALLYA POS</h2>
-  <p>JOYMAR STATIONERY · Mfumo wa Mauzo na Stoo</p>
+  <p id="storeHeaderName">JOYMAR STATIONERY · Mfumo wa Mauzo na Stoo</p>
 </header>
 
 <main>
@@ -191,7 +191,7 @@
   <section id="appPanel" class="hidden">
     <div class="panel">
       <strong id="welcome">Karibu Mallya POS</strong>
-      <p class="muted">Duka: JOYMAR STATIONERY</p>
+      <p id="currentStoreLabel" class="muted">Duka: JOYMAR STATIONERY</p>
       <button id="logoutBtn" class="secondary">Toka kwenye akaunti</button>
     </div>
 
@@ -502,14 +502,11 @@ $("loginForm").addEventListener("submit", async event => {
     currentUser = data.user;
     const { data: adminData, error: adminError } = await db.rpc("mallya_admin_check");
     const isPlatformAdmin = !adminError && adminData === true;
-    const { data: store, error: storeError } = await db
-      .from("stores")
-      .select("id,name,access_status,access_expires_at")
-      .eq("owner_id", currentUser.id)
-      .limit(1)
-      .maybeSingle();
-
+    // Tumia RPC salama kupata duka la akaunti iliyoingia.
+    // Hii huepusha tatizo la RLS kuzuia kusoma duka baada ya kuidhinishwa.
+    const { data: myStores, error: storeError } = await db.rpc("mallya_get_my_store");
     if (storeError) throw storeError;
+    const store = Array.isArray(myStores) ? (myStores[0] || null) : (myStores || null);
     $("loginPanel").classList.add("hidden");
     $("appPanel").classList.add("hidden");
     $("requestPanel").classList.add("hidden");
@@ -519,6 +516,9 @@ $("loginForm").addEventListener("submit", async event => {
       $("appPanel").classList.remove("hidden");
       $("adminNavBtn").classList.remove("hidden");
       $("welcome").textContent = "Karibu Super Admin, " + (currentUser.email || "");
+      $("storeHeaderName").textContent = store ? (store.name + " · Mfumo wa Mauzo na Stoo") : "Usimamizi wa Mfumo · Mallya POS";
+      $("currentStoreLabel").textContent = store ? ("Duka: " + store.name) : "Akaunti ya Super Admin";
+      document.title = store ? ("Mallya POS - " + store.name) : "Mallya POS - Super Admin";
       currentStoreId = store?.id || null;
       await loadAdminRequests();
       await loadAdminStores();
@@ -538,6 +538,9 @@ $("loginForm").addEventListener("submit", async event => {
       } else {
         currentStoreId = store.id;
         $("appPanel").classList.remove("hidden");
+        $("storeHeaderName").textContent = store.name + " · Mfumo wa Mauzo na Stoo";
+        $("currentStoreLabel").textContent = "Duka: " + store.name;
+        document.title = "Mallya POS - " + store.name;
         $("welcome").textContent = "Karibu, " + (currentUser.email || "Mtumiaji") + " · " + store.name;
         await refreshAll();
         showPage("home");
