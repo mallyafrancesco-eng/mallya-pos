@@ -1,0 +1,1591 @@
+
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mallya POS</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --green:#1769aa;
+      --dark:#123456;
+      --yellow:#ffd500;
+      --bg:#f3f7fc;
+      --white:#fff;
+      --red:#b42318;
+    }
+    * { box-sizing:border-box; }
+    body {
+      margin:0;
+      font-family:Arial,sans-serif;
+      background:var(--bg);
+      color:#202820;
+    }
+    header {
+      background:var(--dark);
+      color:white;
+      padding:17px;
+      text-align:center;
+    }
+    header h2 { margin:0 0 5px; }
+    header p { margin:0; font-size:13px; }
+    main { max-width:1000px; margin:auto; padding:14px; }
+    .panel {
+      background:white;
+      border-radius:12px;
+      padding:16px;
+      margin-bottom:14px;
+      box-shadow:0 2px 8px #00000010;
+    }
+    h3 { color:var(--dark); margin-top:0; }
+    input,select,button {
+      width:100%;
+      padding:12px;
+      margin:5px 0;
+      border:1px solid #ccd5cc;
+      border-radius:7px;
+      font-size:15px;
+    }
+    button {
+      border:none;
+      background:var(--green);
+      color:white;
+      font-weight:bold;
+      cursor:pointer;
+    }
+    button:disabled { opacity:.5; }
+    button.secondary { background:#53665a; }
+    button.danger { background:var(--red); }
+    .hidden { display:none !important; }
+    .menu {
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:9px;
+      margin-bottom:14px;
+    }
+    .menu button { min-height:60px; background:var(--green); }
+    .menu button.active { background:var(--dark); outline:3px solid var(--yellow); }
+    .stats {
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:10px;
+    }
+    .stat {
+      background:#e5f0fb;
+      border-left:4px solid var(--green);
+      border-radius:8px;
+      padding:12px;
+      overflow-wrap:anywhere;
+    }
+    .stat small { display:block; margin-bottom:7px; }
+    .stat strong { font-size:18px; }
+    .table-wrap { overflow-x:auto; }
+    table { width:100%; border-collapse:collapse; font-size:13px; }
+    th,td {
+      border-bottom:1px solid #e3e8e3;
+      padding:9px 7px;
+      text-align:left;
+      white-space:nowrap;
+    }
+    th { background:#e5f0fb; }
+    .message { padding:10px; border-radius:7px; margin:8px 0; }
+    .error { background:#ffeded; color:#9c1c1c; }
+    .success { background:#e4f7e8; color:#12652d; }
+    .muted { color:#657065; font-size:13px; }
+    .total { font-size:19px; font-weight:bold; margin:12px 0; }
+    .receipt {
+      background:white;
+      color:black;
+      border:1px dashed #777;
+      padding:16px;
+      max-width:380px;
+      margin:12px auto;
+    }
+    .receipt h3 { text-align:center; }
+    .receipt p { margin:6px 0; }
+    footer { text-align:center; padding:18px; color:#647064; font-size:12px; }
+    @media(min-width:650px) {
+      .menu { grid-template-columns:repeat(4,minmax(0,1fr)); }
+      .stats { grid-template-columns:repeat(4,minmax(0,1fr)); }
+      .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    }
+    @media print {
+      body * { visibility:hidden; }
+      #receipt, #receipt * { visibility:visible; }
+      #receipt {
+        display:block !important;
+        position:absolute;
+        top:0;
+        left:0;
+        width:100%;
+        border:0;
+      }
+      .no-print { display:none !important; }
+    }
+  /* Professional sign-in screen */
+  body:has(#loginPanel:not(.hidden)){background:radial-gradient(circle at top left,#e6f6eb 0,transparent 42%),#f3f7fc;color:#24384d}
+  body:has(#loginPanel:not(.hidden)) header{display:none}
+  body:has(#loginPanel:not(.hidden)) main{max-width:1060px;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:28px}
+  #loginPanel.auth-layout{display:grid;grid-template-columns:0.92fr 1.08fr;padding:0;margin:0;width:100%;max-width:940px;overflow:hidden;border:1px solid #d9eadf;border-radius:22px;box-shadow:0 24px 70px #12345618;background:white;min-height:560px}
+   .auth-brand{background:linear-gradient(145deg,#123456 0%,#1769aa 68%,#0a6a37 100%);color:#fff;padding:46px 38px;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;position:relative;overflow:hidden}
+  .auth-brand:after{content:"";position:absolute;width:280px;height:280px;border:1px solid #ffffff18;border-radius:50%;right:-125px;bottom:-110px;box-shadow:0 0 0 35px #ffffff08,0 0 0 70px #ffffff06}
+  .brand-mark{display:grid;place-items:center;width:48px;height:48px;border-radius:14px;background:#ffffff18;border:1px solid #ffffff40;font-size:25px;font-weight:800;margin-bottom:14px}
+  .brand-name{font-size:24px;letter-spacing:1.6px;font-weight:800}.brand-name span{color:#ffd500}
+  .brand-tag{font-size:13px;color:#e5f0fb;margin:8px 0 28px}.brand-divider{height:3px;width:44px;background:#ffd500;border-radius:5px;margin-bottom:22px}
+  .auth-brand h2{font-size:27px;line-height:1.25;margin:0 0 12px;color:#fff}.auth-brand>p:not(.brand-tag){font-size:14px;line-height:1.7;color:#e5f0fb;margin:0 0 23px;max-width:330px}
+  .auth-brand ul{list-style:none;padding:0;margin:0 0 30px;display:grid;gap:13px;font-size:13px;color:#f0f7ff}.auth-brand li span{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:#ffffff1c;color:#ffd500;font-weight:bold;margin-right:8px}
+  .auth-brand small{font-size:9px;letter-spacing:1.7px;color:#d4ebdb}
+  .auth-content{padding:45px clamp(24px,5vw,58px);display:flex;flex-direction:column;justify-content:center;min-width:0}
+  .auth-heading{text-align:center;margin-bottom:26px}.mini-brand{width:42px;height:42px;border-radius:13px;background:#eaf3fc;color:#1769aa;display:grid;place-items:center;margin:0 auto 17px;font-size:14px;font-weight:800;letter-spacing:-1px}
+  .eyebrow{font-size:10px;letter-spacing:2px;color:#1769aa;font-weight:800;margin:0 0 8px}.auth-heading h3{font-size:25px;letter-spacing:-.5px;color:#123456;margin:0 0 9px}.auth-subtitle{font-size:13px;color:#75849a;margin:0}
+  #loginForm label{display:block;font-size:12px;font-weight:700;color:#35536f;margin:0 0 6px}
+  #loginPanel input{display:block;width:100%;padding:13px 14px;margin:0 0 17px;border:1px solid #d3e5d8;border-radius:10px;background:#fbfdff;font-size:14px;color:#24384d;outline:none;transition:border-color .15s,box-shadow .15s}
+  #loginPanel input:focus{border-color:#1769aa;box-shadow:0 0 0 3px #1769aa18;background:#fff}
+  .password-wrap{position:relative;width:100%}.password-wrap input{padding-right:49px!important}
+  #loginPanel .password-wrap #togglePassword{position:absolute;right:8px;top:5px;width:34px;height:34px;min-width:34px;padding:0;margin:0;border:0;border-radius:8px;background:transparent;color:#71839a;display:grid;place-items:center;box-shadow:none}
+  #togglePassword svg{width:17px;height:17px;display:block}#loginPanel .password-wrap #togglePassword:hover{background:#eaf3fc;color:#1769aa}
+  #loginPanel #authSubmit{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:13px 16px;margin:4px 0 12px;border-radius:10px;background:linear-gradient(100deg,#123456,#1769aa);box-shadow:0 7px 15px #1769aa26;color:#fff;font-size:14px;font-weight:700}
+  #loginPanel #authSubmit:hover{filter:brightness(1.04)}#loginPanel #authSubmit span{font-size:18px;line-height:12px}
+  .auth-actions{display:flex;align-items:center;justify-content:space-between;gap:9px;flex-wrap:wrap;margin-top:4px}
+  #loginPanel .auth-actions button{width:auto;min-height:34px;padding:6px 0;margin:0;background:transparent;border:0;color:#1769aa;font-size:11px;font-weight:700;text-align:left}
+  #loginPanel .auth-actions #registerModeBtn{border:1px solid #cfe5d5;border-radius:8px;padding:9px 12px;background:#f2faf4}
+  #loginPanel .auth-actions button:hover{text-decoration:underline}
+  #loginMessage{font-size:12px;line-height:1.5;margin-top:12px;overflow-wrap:anywhere}.auth-footnote{margin:26px 0 0;text-align:center;color:#8996a8;font-size:10px}.secure-dot{display:inline-block;width:6px;height:6px;background:#1769aa;border-radius:50%;margin:0 5px 1px 0}
+  @media(max-width:700px){body:has(#loginPanel:not(.hidden)) main{padding:16px;align-items:flex-start}#loginPanel.auth-layout{grid-template-columns:1fr;max-width:460px;min-height:0;border-radius:18px}.auth-brand{padding:22px 24px 20px}.brand-mark{width:38px;height:38px;font-size:20px;margin-bottom:8px}.brand-name{font-size:19px}.brand-tag{margin:5px 0 0}.brand-divider,.auth-brand h2,.auth-brand>p:not(.brand-tag),.auth-brand ul,.auth-brand small{display:none}.auth-content{padding:28px 24px 24px}.auth-heading{margin-bottom:22px}.contact-card{margin-top:18px;padding:12px}.contact-card a{font-size:12px;padding:10px}.mini-brand{display:none}.auth-heading h3{font-size:23px}}
+  .contact-card{display:grid;gap:9px;margin-top:22px;padding:15px 16px;border:1px solid #d5e8da;border-radius:13px;background:linear-gradient(135deg,#f7fff9,#edf8f0);box-shadow:0 5px 16px #1234560a}
+  .contact-card strong{font-size:12px;color:#35536f;margin-bottom:2px;letter-spacing:.1px}
+  .contact-card a{display:flex;align-items:center;gap:10px;text-decoration:none;color:#174a78;background:#fff;border:1px solid #e0eee4;border-radius:9px;padding:11px 12px;font-size:13px;font-weight:700;transition:all .15s;overflow-wrap:anywhere}
+  .contact-card a:first-of-type:before{content:"CALL";font-size:9px;letter-spacing:1px;color:#1769aa;background:#e5f0fb;border-radius:5px;padding:5px 6px}
+  .contact-card a:last-of-type:before{content:"WA";font-size:9px;letter-spacing:1px;color:#123456;background:#fff4b8;border-radius:5px;padding:5px 6px}
+  .contact-card a:hover{border-color:#1769aa;transform:translateY(-1px);box-shadow:0 4px 10px #1234560b}
+  .registration-note{padding:11px 12px;margin:0 0 15px;border-left:3px solid #ffd500;background:#f5fbf6;border-radius:7px;color:#456653;font-size:12px;line-height:1.5}
+  .admin-actions{display:flex;gap:6px;min-width:250px}.admin-actions select,.admin-actions input{min-width:90px;margin:2px;padding:7px}.admin-actions button{width:auto;white-space:nowrap;padding:8px}.status-pill{display:inline-block;padding:4px 7px;border-radius:6px;background:#e5f0fb;font-size:12px}.hidden{display:none!important}
+
+  /* Mallya POS: professional responsive workspace (login page remains unchanged) */
+  #appPanel { color:#18251d; }
+  #appPanel > .panel:first-child { display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap; border:1px solid #e0ebe3; border-top:4px solid var(--green); box-shadow:0 8px 24px #10351c0b; }
+  #welcome { font-size:18px; color:var(--dark); }
+  #currentStoreLabel { margin:5px 0 0; }
+  #logoutBtn { width:auto; min-width:150px; margin:0; }
+  #appPanel .panel { border:1px solid #e2eaf3; border-radius:15px; box-shadow:0 6px 22px #173a2308; padding:clamp(14px,2.5vw,22px); }
+  #appPanel h3, #adminPage h3 { letter-spacing:-.2px; }
+  .menu { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+  .menu button { min-height:54px; border-radius:10px; box-shadow:0 3px 8px #12345615; transition:transform .15s ease,background .15s ease; }
+  .menu button:active { transform:scale(.985); }
+  .menu button.active { outline:2px solid var(--yellow); outline-offset:1px; }
+  .stat { border:1px solid #d6eadd; border-left:4px solid var(--green); min-height:78px; }
+  .stat small { color:#506356; line-height:1.4; }
+  .stat strong { font-size:clamp(15px,2vw,20px); line-height:1.4; }
+  #appPanel input, #appPanel select, #adminPage input, #adminPage select { background:#fff; min-height:43px; border-color:#d4ded6; }
+  #appPanel input:focus, #appPanel select:focus, #adminPage input:focus, #adminPage select:focus { outline:2px solid #a9d8b7; border-color:var(--green); }
+  #appPanel form button, #adminPage button { min-height:43px; border-radius:9px; }
+  .table-wrap { border:1px solid #e3eae4; border-radius:10px; max-width:100%; }
+  .table-wrap table { margin:0; }
+  .table-wrap th { color:#183b25; background:#eaf5ed; position:sticky; top:0; }
+  .table-wrap td, .table-wrap th { padding:11px 10px; }
+  .table-wrap tbody tr:nth-child(even) { background:#fbfdff; }
+  .table-wrap tbody tr:hover { background:#f0f8f2; }
+  #receipt { border-radius:10px; }
+  footer { border-top:1px solid #e2eaf3; background:#fbfdff; letter-spacing:.3px; }
+  @media(min-width:650px) { .menu { grid-template-columns:repeat(4,minmax(0,1fr)); } }
+  @media(max-width:480px) {
+    #appPanel > .panel:first-child { align-items:stretch; }
+    #logoutBtn { width:100%; }
+    .menu button { font-size:13px; padding:10px 7px; }
+    #appPanel .panel { padding:13px; }
+    .table-wrap th, .table-wrap td { padding:9px 8px; }
+  }
+
+  /* MALLYA POS — professional in-app theme; login screen intentionally unchanged */
+  body:has(#appPanel:not(.hidden)){background:#f3faf6;color:#24384d;font-family:Inter,Arial,sans-serif}
+  body:has(#appPanel:not(.hidden)) header{display:flex;align-items:center;justify-content:space-between;gap:16px;text-align:left;padding:16px clamp(16px,3vw,32px);background:linear-gradient(110deg,#123456,#1769aa);border-bottom:4px solid #ffd500;box-shadow:0 4px 18px #12345622}
+  body:has(#appPanel:not(.hidden)) header h2{font-size:clamp(21px,2vw,29px);letter-spacing:.3px;margin:0;color:#fff}
+  body:has(#appPanel:not(.hidden)) header p{font-size:12px;color:#e5f0fb;max-width:48%;text-align:right;line-height:1.5}
+  body:has(#appPanel:not(.hidden)) main{max-width:1500px;padding:22px clamp(12px,2vw,28px)}
+  #appPanel{display:grid;grid-template-columns:220px minmax(0,1fr);gap:18px;align-items:start}
+  #appPanel>.panel:first-child{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin:0;padding:17px 22px;border:1px solid #dcebe1;border-left:5px solid #ffd500;border-radius:16px;background:linear-gradient(110deg,#fff,#f6fff9);box-shadow:0 5px 18px #1234560b}
+  #welcome{font-size:20px;color:#123456}
+  #currentStoreLabel{margin:5px 0 0}
+  #logoutBtn{width:auto;min-width:150px;margin:0;background:#fff;color:#1769aa;border:1px solid #b9ddc7}
+  #appPanel>.menu{grid-column:1;grid-row:2;display:flex;flex-direction:column;gap:7px;position:sticky;top:12px;margin:0;padding:12px;background:linear-gradient(180deg,#123456,#075b30);border-radius:16px;box-shadow:0 8px 22px #12345620}
+  #appPanel>.menu button{display:flex;align-items:center;justify-content:flex-start;text-align:left;min-height:47px;width:100%;padding:12px 14px;margin:0;border:1px solid transparent;border-radius:10px;background:transparent;color:#f4fff7;font-size:13px;font-weight:700;transition:background .18s,transform .18s}
+  #appPanel>.menu button:hover{background:#ffffff16;transform:translateX(2px)}
+  #appPanel>.menu button.active{background:#ffd500;color:#24384d;outline:none;box-shadow:0 4px 12px #ffd50030}
+  #appPanel>.page{grid-column:2;grid-row:2;min-width:0}
+  #appPanel .panel{margin-bottom:16px;padding:clamp(15px,2vw,23px);border:1px solid #dcebe2;border-radius:15px;background:#fff;box-shadow:0 5px 18px #1234560b}
+  #appPanel .panel h3,#adminPage h3{font-size:17px;line-height:1.35;margin:0 0 17px;padding-bottom:11px;border-bottom:1px solid #edf4ef;color:#174a78}
+  #appPanel .stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+  #appPanel .stat{position:relative;min-height:96px;padding:17px 15px;background:linear-gradient(135deg,#f0fff5,#e1f5e8);border:1px solid #cce8d5;border-left:4px solid #1769aa;border-radius:13px}
+  #appPanel .stat:nth-child(2){background:#fffbe3;border-color:#f2e9a6;border-left-color:#ffd500}
+  #appPanel .stat:nth-child(3){background:#e9f8ef}
+  #appPanel .stat small{font-size:12px;color:#476457;font-weight:700}
+  #appPanel .stat strong{font-size:clamp(18px,2vw,25px);color:#123456;line-height:1.35}
+  #appPanel input,#appPanel select,#adminPage input,#adminPage select{width:100%;min-width:0;padding:12px 13px;margin:6px 0 12px;border:1px solid #d3e3d9;border-radius:9px;background:#fbfdff;color:#24384d;outline:none;transition:border-color .15s,box-shadow .15s}
+  #appPanel input:focus,#appPanel select:focus,#adminPage input:focus,#adminPage select:focus{border-color:#1769aa;box-shadow:0 0 0 3px #1769aa18;background:#fff}
+  #appPanel button,#adminPage button{border-radius:9px;padding:11px 15px;transition:filter .15s,transform .15s;box-shadow:0 2px 5px #1234560b}
+  #appPanel button:hover,#adminPage button:hover{filter:brightness(1.04)}
+  #appPanel button.secondary,#adminPage button.secondary{background:#eff7f1;color:#24543a;border:1px solid #d6e8db}
+  #appPanel button.danger,#adminPage button.danger{background:#b42318;color:#fff}
+  #appPanel .table-wrap,#adminPage .table-wrap{width:100%;overflow-x:auto;border:1px solid #e1eee5;border-radius:10px}
+  #appPanel table,#adminPage table{width:100%;border-collapse:separate;border-spacing:0;font-size:13px;background:#fff}
+  #appPanel th,#adminPage th{background:#eaf7ee;color:#16492e;font-weight:800;border-bottom:1px solid #d5e9dc;padding:12px 10px}
+  #appPanel td,#adminPage td{padding:11px 10px;border-bottom:1px solid #edf3ef;color:#29483a}
+  #appPanel tr:last-child td,#adminPage tr:last-child td{border-bottom:0}
+  #appPanel tbody tr:hover td,#adminPage tbody tr:hover td{background:#f7fcf8}
+  #appPanel .message,#adminPage .message{border-radius:10px;padding:12px 14px}
+  #appPanel .total{padding:14px 16px;border-radius:10px;background:#fffbe0;border:1px solid #f2e6a0;color:#123456}
+  #appPanel .receipt{border:1px dashed #9eafa4;border-radius:4px;box-shadow:none}
+  footer{margin-top:12px;background:#123456;color:#e7f7eb;border-top:3px solid #ffd500;padding:18px 12px;font-size:12px;letter-spacing:.3px;line-height:1.8;text-align:center} footer .version-label{margin-top:3px;color:#c9dced} footer .version-label strong{display:inline-block;margin-left:4px;padding:2px 8px;border:1px solid #7fa9d0;border-radius:999px;color:#fff;font-size:11px;letter-spacing:.5px}
+  @media(min-width:900px){#appPanel .stats{grid-template-columns:repeat(4,minmax(0,1fr))}#appPanel .form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}#appPanel .form-grid input{margin:0 0 10px}}
+  @media(max-width:760px){body:has(#appPanel:not(.hidden)) header{align-items:flex-start;flex-direction:column;gap:5px}body:has(#appPanel:not(.hidden)) header p{max-width:100%;text-align:left}body:has(#appPanel:not(.hidden)) main{padding:12px}#appPanel{grid-template-columns:minmax(0,1fr);gap:12px}#appPanel>.panel:first-child{grid-column:1;padding:15px}#appPanel>.menu{grid-column:1;grid-row:auto;position:static;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));padding:9px;gap:6px}#appPanel>.menu button{justify-content:center;text-align:center;padding:10px 7px;min-height:43px;font-size:12px}#appPanel>.page{grid-column:1;grid-row:auto}#appPanel .stats{grid-template-columns:repeat(2,minmax(0,1fr))}#logoutBtn{width:100%}}
+  @media(max-width:420px){#appPanel .stats{grid-template-columns:1fr}#appPanel .panel{padding:14px}#appPanel>.menu button{font-size:11px}}
+
+  </style>
+</head>
+<body>
+<header>
+  <h2>MALLYA POS</h2>
+  <p id="storeHeaderName">Mfumo wa Mauzo na Stoo</p>
+</header>
+
+<main>
+  <section id="loginPanel" class="panel auth-layout">
+    <aside class="auth-brand">
+      <div class="brand-mark">M</div>
+      <div class="brand-name">MALLYA <span>POS</span></div>
+      <p class="brand-tag">Dhibiti biashara yako kwa urahisi.</p>
+      <div class="brand-divider"></div>
+      <h2>Mauzo. Stoo. Ripoti.</h2>
+      <p>Jukwaa moja la kusimamia mauzo, bidhaa, madeni na maendeleo ya biashara yako.</p>
+      <ul><li><span>✓</span> Usimamizi wa bidhaa na stoo</li><li><span>✓</span> Mauzo na risiti kwa haraka</li><li><span>✓</span> Ripoti na ufuatiliaji wa madeni</li></ul>
+      <small>SMARTER BUSINESS · BETTER CONTROL</small>
+    </aside>
+    <div class="auth-content">
+      <div class="auth-heading"><div class="mini-brand">MP</div><p class="eyebrow">KARIBU TENA</p><h3 id="authTitle">Ingia kwenye mfumo</h3><p class="auth-subtitle">Ingia kwenye akaunti yako ili kuendelea.</p></div>
+      <form id="loginForm">
+        <label for="email">Anwani ya barua pepe</label><input id="email" type="email" placeholder="mfano@email.com" autocomplete="email" required>
+        <label for="password">Password</label><div class="password-wrap"><input id="password" type="password" placeholder="Weka password yako" autocomplete="current-password" required><button type="button" id="togglePassword" aria-label="Onyesha password" title="Onyesha password"><svg id="passwordEyeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
+        <div id="confirmPasswordWrap" class="hidden"><label for="confirmPassword">Thibitisha password</label><input id="confirmPassword" type="password" placeholder="Rudia password" autocomplete="new-password"></div>
+        <div id="registrationFields" class="hidden">
+          <div class="registration-note">Taarifa hizi zitasaidia Super Admin kupitia ombi lako la kutumia Mallya POS.</div>
+          <label for="regStoreName">Jina la duka / biashara</label><input id="regStoreName" maxlength="120" placeholder="Mf. JOYMAR STATIONERY" autocomplete="organization">
+          <label for="regOwnerName">Jina la mmiliki</label><input id="regOwnerName" maxlength="120" placeholder="Jina lako kamili" autocomplete="name">
+          <label for="regBusinessType">Aina ya biashara</label><select id="regBusinessType"><option value="">Chagua aina ya biashara</option><option>Duka la rejareja</option><option>Stationery / huduma za uchapishaji</option><option>Jumla na rejareja</option><option>Supermarket</option><option>Duka la nguo</option><option>Pharmacy / duka la dawa</option><option>Hardware</option><option>Restaurant / chakula</option><option>Biashara nyingine</option></select>
+          <label for="regLocation">Eneo la biashara</label><input id="regLocation" maxlength="180" placeholder="Mf. Ifumbo, Chunya, Mbeya" autocomplete="street-address">
+          <label for="regDuration">Muda unaotaka kutumia mfumo</label><select id="regDuration"><option value="30">Siku 30</option><option value="90">Siku 90 (miezi 3)</option><option value="180">Siku 180 (miezi 6)</option><option value="365">Siku 365 (mwaka 1)</option></select>
+        </div>
+        <button id="authSubmit" type="submit">Ingia kwenye akaunti <span aria-hidden="true">→</span></button>
+      </form>
+      <div class="auth-actions"><button type="button" id="forgotPasswordBtn" class="secondary">Umesahau password?</button><button type="button" id="registerModeBtn" class="auth-link">+ Tengeneza akaunti mpya</button><button type="button" id="loginModeBtn" class="auth-link hidden">← Rudi kwenye kuingia</button></div>
+      <div id="loginMessage" aria-live="polite"></div>
+      <div class="contact-card"><strong>Unahitaji msaada? Wasiliana na Mallya</strong><a href="tel:0794102636">📞 0794 102 636 — Calls</a><a href="https://wa.me/255675102636" target="_blank" rel="noopener">💬 0675 102 636 — WhatsApp</a></div>
+      <p class="auth-footnote"><span class="secure-dot"></span> Muunganisho salama · Mallya POS</p>
+    </div>
+  </section>
+
+  <section id="appPanel" class="hidden">
+    <div class="panel">
+      <strong id="welcome">Karibu Mallya POS</strong>
+      <p id="currentStoreLabel" class="muted">Dhibiti biashara yako</p>
+      <button id="logoutBtn" class="secondary">Toka kwenye akaunti</button>
+    </div>
+
+    <div class="menu no-print">
+      <button data-page="home" class="active">Dashibodi</button>
+      <button data-page="products">Bidhaa na Stoo</button>
+      <button data-page="sales">Mauzo</button>
+      <button data-page="expenses">Matumizi</button>
+      <button data-page="reports">Ripoti</button>
+      <button data-page="debts">Madeni ya Wateja</button>
+      <button id="adminNavBtn" data-page="admin" class="hidden">Super Admin</button>
+    </div>
+
+    <section id="page-home" class="page">
+      <div class="panel">
+        <h3>Muhtasari wa biashara</h3>
+        <div class="stats">
+          <div class="stat"><small>Bidhaa</small><strong id="statProducts">0</strong></div>
+          <div class="stat"><small>Mauzo yaliyokamilika</small><strong id="statSales">TSh 0</strong></div>
+          <div class="stat"><small>Matumizi</small><strong id="statExpenses">TSh 0</strong></div>
+          <div class="stat"><small>Faida ghafi inayokadiriwa</small><strong id="statProfit">TSh 0</strong></div>
+        </div>
+        <p class="muted">Takwimu za muhtasari huu zinatokana na rekodi zilizopakiwa na mfumo.</p>
+        <button onclick="refreshAll()">Sasisha taarifa</button>
+      </div>
+      <div class="panel">
+        <h3>Bidhaa zinazokaribia kuisha</h3>
+        <div id="lowStock"></div>
+      </div>
+    </section>
+
+    <section id="page-products" class="page hidden">
+      <div class="panel">
+        <h3>Ongeza bidhaa</h3>
+        <form id="productForm">
+          <input id="productName" placeholder="Jina la bidhaa" required>
+          <div class="form-grid">
+            <input id="productSku" placeholder="SKU / Namba ya bidhaa">
+            <input id="productUnit" placeholder="Kipimo (mf. pcs, ream)" value="pcs" required>
+            <input id="productCost" type="number" min="0" step="any" placeholder="Bei ya kununua (TSh)" required>
+            <input id="productPrice" type="number" min="0" step="any" placeholder="Bei ya kuuza (TSh)" required>
+            <input id="productStock" type="number" min="0" step="any" placeholder="Idadi ya kuanzia" required>
+            <input id="productMin" type="number" min="0" step="any" value="5" placeholder="Kiwango cha tahadhari" required>
+          </div>
+          <button type="submit">Hifadhi bidhaa</button>
+        </form>
+        <div id="productMessage" aria-live="polite"></div>
+      </div>
+      <div class="panel">
+        <h3>Bidhaa zilizopo</h3>
+        <input id="productSearch" placeholder="Tafuta jina au SKU...">
+        <div id="productsTable" class="table-wrap"></div>
+      </div>
+    </section>
+
+    <section id="page-sales" class="page hidden">
+      <div class="panel">
+        <h3>Rekodi mauzo</h3>
+        <form id="cartForm">
+          <label for="saleProduct">Chagua bidhaa</label>
+          <select id="saleProduct" required></select>
+          <label for="saleQty">Idadi</label>
+          <input id="saleQty" type="number" min="0.001" step="any" value="1" required>
+          <button type="submit">Ongeza kwenye orodha ya mauzo</button>
+        </form>
+        <div id="cartTable" class="table-wrap"></div>
+        <div class="total">Jumla: <span id="cartTotal">TSh 0</span></div>
+        <form id="checkoutForm">
+          <label for="customerName">Jina la mteja</label>
+          <input id="customerName" placeholder="Andika jina la mteja">
+          <label for="paymentMethod">Njia ya malipo</label>
+          <select id="paymentMethod" required>
+            <option value="cash">Pesa taslimu</option>
+            <option value="mobile_money">Mobile Money</option>
+            <option value="bank">Benki</option>
+            <option value="credit">Mkopo / Malipo baadaye</option>
+          </select>
+          <label for="amountPaid">Kiasi kilicholipwa (TSh)</label>
+          <input id="amountPaid" type="number" min="0" step="any" value="0" required>
+          <button type="submit">Kamilisha mauzo na tengeneza risiti</button>
+        </form>
+        <div id="salesMessage" aria-live="polite"></div>
+      </div>
+      <div class="panel">
+        <h3>Mauzo ya karibuni</h3>
+        <div id="recentSales" class="table-wrap"></div>
+      </div>
+      <div class="panel">
+        <h3>Risiti</h3>
+        <div id="receipt" class="receipt">
+          <p class="muted">Risiti itaonekana hapa baada ya mauzo kukamilika.</p>
+        </div>
+        <button class="no-print" onclick="window.print()">Chapisha risiti</button>
+      </div>
+    </section>
+
+    <section id="page-expenses" class="page hidden">
+      <div class="panel">
+        <h3>Rekodi matumizi</h3>
+        <form id="expenseForm">
+          <input id="expenseDescription" placeholder="Maelezo ya matumizi" required>
+          <input id="expenseCategory" placeholder="Aina (mf. usafiri, umeme)" required>
+          <input id="expenseAmount" type="number" min="0.01" step="any" placeholder="Kiasi (TSh)" required>
+          <button type="submit">Hifadhi matumizi</button>
+        </form>
+        <div id="expenseMessage" aria-live="polite"></div>
+      </div>
+      <div class="panel">
+        <h3>Matumizi ya karibuni</h3>
+        <div id="expensesTable" class="table-wrap"></div>
+      </div>
+    </section>
+
+    <section id="page-reports" class="page hidden">
+      <div class="panel">
+        <h3>Ripoti za biashara</h3>
+        <label for="reportPeriod">Kipindi cha ripoti</label>
+        <select id="reportPeriod">
+          <option value="today">Leo</option>
+          <option value="week">Wiki hii</option>
+          <option value="month">Mwezi huu</option>
+          <option value="year">Mwaka huu</option>
+          <option value="all">Taarifa zote</option>
+        </select>
+        <button id="loadReportBtn">Tengeneza ripoti</button>
+        <div id="reportSummary"></div>
+        <div id="reportSales" class="table-wrap"></div>
+        <div id="reportCollections" class="table-wrap"></div>
+        <div id="topProductsReport" class="table-wrap"></div>
+      </div>
+    </section>
+
+    <section id="page-debts" class="page hidden">
+      <div class="panel">
+        <h3>Madeni ya wateja</h3>
+        <p class="muted">Orodha hii ina mauzo yaliyokamilika ambayo bado hayajalipwa yote.</p>
+        <button id="refreshDebtsBtn" type="button">Sasisha madeni</button>
+        <div id="debtsSummary"></div>
+        <div id="debtsTable" class="table-wrap"></div>
+        <div id="debtMessage" aria-live="polite"></div>
+      </div>
+    </section>
+  </section>
+
+  <section id="requestPanel" class="panel hidden">
+    <h3>Omba kufungua duka</h3>
+    <p class="muted">Akaunti yako haina duka lililoidhinishwa. Tuma ombi kwa Super Admin, kisha subiri idhini.</p>
+    <form id="storeRequestForm">
+      <label for="requestedStoreName">Jina la duka</label>
+      <input id="requestedStoreName" maxlength="120" minlength="2" required placeholder="Mf. Duka Langu">
+      <button id="sendStoreRequestBtn" type="submit">Tuma ombi</button>
+    </form>
+    <div id="storeRequestMessage" class="message hidden" aria-live="polite"></div>
+  </section>
+
+  <section id="adminPage" class="panel hidden">
+    <h3>Super Admin — Usimamizi wa maduka</h3>
+    <p class="muted">Idhinisha maombi, weka muda wa matumizi, simamisha au washa tena duka.</p>
+    <div class="panel">
+      <h3>Taarifa za waliojisajili</h3>
+      <p class="muted">Taarifa walizojaza wakati wa kufungua akaunti.</p>
+      <button id="refreshRegistrationsBtn" type="button" onclick="loadRegistrationProfiles()">Sasisha waliojisajili</button>
+      <div id="registrationProfilesMessage" class="message hidden" aria-live="polite"></div>
+      <div id="registrationProfilesTable" class="table-wrap">Bonyeza “Sasisha waliojisajili”.</div>
+    </div>
+    <div class="panel">
+      <h3>Maombi ya maduka</h3>
+      <button id="refreshRequestsBtn" type="button">Sasisha maombi</button>
+      <div id="adminRequestsMessage" class="message hidden" aria-live="polite"></div>
+      <div id="adminRequestsTable" class="table-wrap">Bonyeza “Sasisha maombi”.</div>
+    </div>
+    <div class="panel">
+      <h3>Maduka yote</h3>
+      <button id="refreshStoresBtn" type="button">Sasisha maduka</button>
+      <div id="adminStoresMessage" class="message hidden" aria-live="polite"></div>
+      <div id="adminStoresTable" class="table-wrap">Bonyeza “Sasisha maduka”.</div>
+    </div>
+  </section>
+</main>
+
+<footer><div>© 2026 Mallya POS. Haki zote zimehifadhiwa.</div><div class="version-label">Toleo la mfumo: <strong>v1.0.1</strong></div></footer>
+
+<script>
+"use strict";
+
+// Muunganisho wa Supabase
+const SUPABASE_URL = "https://trgwcnafqnjttsrnpqyh.supabase.co";
+const SUPABASE_KEY = "sb_publishable_USejBZ_Ziw9qSDrIN6Sb-A_HaBRokQi";
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let currentUser = null;
+let currentStoreId = null;
+let currentStoreName = "";
+let products = [];
+let cart = [];
+let salesCache = [];
+let expensesCache = [];
+let lastReceipt = null;
+
+const $ = id => document.getElementById(id);
+const money = value => "TSh " + Number(value || 0).toLocaleString("en-TZ", {
+  maximumFractionDigits: 2
+});
+
+function showMessage(id, message, isError = false) {
+  const el = $(id);
+  el.className = "message " + (isError ? "error" : "success");
+  el.textContent = message;
+}
+
+function clearMessage(id) {
+  $(id).textContent = "";
+  $(id).className = "";
+}
+
+function safe(value) {
+  return String(value ?? "").replace(/[&<>"']/g, ch => ({
+    "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"
+  })[ch]);
+}
+
+function dateText(value) {
+  if (!value) return "-";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "-" : date.toLocaleString("sw-TZ");
+}
+
+function showPage(page) {
+  document.querySelectorAll(".page").forEach(el => el.classList.add("hidden"));
+  $("adminPage").classList.add("hidden");
+  if (page === "admin") { $("adminPage").classList.remove("hidden"); loadAdminRequests(); loadAdminStores(); }
+  else $("page-" + page).classList.remove("hidden");
+  document.querySelectorAll("[data-page]").forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.page === page);
+  });
+  if (page === "products") renderProducts();
+  if (page === "sales") {
+    renderProductOptions();
+    renderCart();
+    loadRecentSales();
+  }
+  if (page === "expenses") renderExpenses();
+  if (page === "reports") makeReport();
+  if (page === "debts") loadDebts();
+}
+
+document.querySelectorAll("[data-page]").forEach(btn => {
+  btn.addEventListener("click", () => showPage(btn.dataset.page));
+});
+
+// Login / usajili / kurejesha password
+let authMode = "login";
+function setAuthMode(mode) {
+  authMode = mode;
+  clearMessage("loginMessage");
+  const registering = mode === "register";
+  $("authTitle").textContent = registering ? "Sajili mtumiaji mpya" : "Ingia kwenye mfumo";
+  $("authSubmit").textContent = registering ? "Tengeneza akaunti" : "Ingia";
+  $("confirmPasswordWrap").classList.toggle("hidden", !registering);
+  $("confirmPassword").required = registering;
+  $("registrationFields").classList.toggle("hidden", !registering);
+  ["regStoreName","regOwnerName","regBusinessType","regLocation","regDuration"].forEach(id => { $(id).required = registering && id !== "regDuration"; });
+  $("password").autocomplete = registering ? "new-password" : "current-password";
+  $("forgotPasswordBtn").classList.toggle("hidden", registering);
+  $("registerModeBtn").classList.toggle("hidden", registering);
+  $("loginModeBtn").classList.toggle("hidden", !registering);
+}
+$("togglePassword").addEventListener("click", () => {
+  const field = $("password");
+  const show = field.type === "password";
+  field.type = show ? "text" : "password";
+  $("confirmPassword").type = show ? "text" : "password";
+  $("togglePassword").setAttribute("aria-label", show ? "Ficha password" : "Onyesha password");
+  $("togglePassword").setAttribute("title", show ? "Ficha password" : "Onyesha password");
+  $("passwordEyeIcon").innerHTML = show
+    ? '<path d="M3 3l18 18"/><path d="M10.6 10.6a2 2 0 0 0 2.8 2.8"/><path d="M9.9 5.2A10.8 10.8 0 0 1 12 5c6.4 0 10 7 10 7a15.8 15.8 0 0 1-3 3.8"/><path d="M6.2 6.2C3.5 8 2 12 2 12s3.6 7 10 7a10.6 10.6 0 0 0 4-.8" />'
+    : '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>';
+});
+$("registerModeBtn").addEventListener("click", () => setAuthMode("register"));
+$("loginModeBtn").addEventListener("click", () => setAuthMode("login"));
+$("forgotPasswordBtn").addEventListener("click", async () => {
+  clearMessage("loginMessage");
+  const email = $("email").value.trim();
+  if (!email) { showMessage("loginMessage", "Andika email yako kwanza, kisha bonyeza Forgot Password.", true); $("email").focus(); return; }
+  const b = $("forgotPasswordBtn"); b.disabled = true;
+  try {
+    const { error } = await db.auth.resetPasswordForEmail(email, { redirectTo: window.location.href });
+    if (error) throw error;
+    showMessage("loginMessage", "Ikiwa email hii imesajiliwa, utapokea kiungo cha kuweka password mpya. Angalia Inbox na Spam.");
+  } catch (e) { showMessage("loginMessage", "Imeshindikana kutuma email ya kurejesha password: " + e.message, true); }
+  finally { b.disabled = false; }
+});
+
+// Login
+$("loginForm").addEventListener("submit", async event => {
+  event.preventDefault();
+  clearMessage("loginMessage");
+  const button = event.submitter;
+  if (button) button.disabled = true;
+
+  try {
+    const email = $("email").value.trim();
+    const password = $("password").value;
+    if (authMode === "register") {
+      if (password.length < 6) throw new Error("Password iwe na herufi/namba angalau 6.");
+      if (password !== $("confirmPassword").value) throw new Error("Password mbili hazifanani.");
+      const registration = {
+        store_name: $("regStoreName").value.trim(),
+        owner_name: $("regOwnerName").value.trim(),
+        business_type: $("regBusinessType").value,
+        business_location: $("regLocation").value.trim(),
+        requested_duration_days: Number($("regDuration").value || 30)
+      };
+      const { data: signupData, error: signupError } = await db.auth.signUp({ email, password, options: { emailRedirectTo: window.location.href, data: { mallya_registration: registration } } });
+      if (signupError) throw signupError;
+      if (signupData.session) await db.auth.signOut();
+      $("password").value = ""; $("confirmPassword").value = "";
+      setAuthMode("login");
+      showMessage("loginMessage", "✓ AKAUNTI IMETENGENEZWA! Nenda kwenye barua pepe yako (Inbox) na ubofye kiungo cha confirmation kuthibitisha akaunti. Usipoona email, angalia Spam/Junk. Baada ya kuthibitisha, rudi hapa uingie; Super Admin atapitia taarifa za biashara yako.");
+      return;
+    }
+    const { data, error } = await db.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+
+    currentUser = data.user;
+    const { data: adminData, error: adminError } = await db.rpc("mallya_admin_check");
+    const isPlatformAdmin = !adminError && adminData === true;
+    // Tumia RPC salama kupata duka la akaunti iliyoingia.
+    // Hii huepusha tatizo la RLS kuzuia kusoma duka baada ya kuidhinishwa.
+    const { data: myStores, error: storeError } = await db.rpc("mallya_get_my_store");
+    if (storeError) throw storeError;
+    const store = Array.isArray(myStores) ? (myStores[0] || null) : (myStores || null);
+    currentStoreName = store?.name || "";
+    $("loginPanel").classList.add("hidden");
+    $("appPanel").classList.add("hidden");
+    $("requestPanel").classList.add("hidden");
+    $("adminPage").classList.add("hidden");
+
+    if (isPlatformAdmin) {
+      $("appPanel").classList.remove("hidden");
+      $("adminNavBtn").classList.remove("hidden");
+      $("welcome").textContent = "Karibu Super Admin, " + (currentUser.email || "");
+      $("storeHeaderName").textContent = store ? (store.name + " · Mfumo wa Mauzo na Stoo") : "Usimamizi wa Mfumo · Mallya POS";
+      $("currentStoreLabel").textContent = store ? ("Duka: " + store.name) : "Akaunti ya Super Admin";
+      document.title = store ? ("Mallya POS - " + store.name) : "Mallya POS - Super Admin";
+      currentStoreId = store?.id || null;
+      await loadAdminRequests();
+      await loadAdminStores();
+      await loadRegistrationProfiles();
+      if (store) { await refreshAll(); showPage("home"); }
+      else { document.querySelectorAll(".page").forEach(el => el.classList.add("hidden")); $("adminPage").classList.remove("hidden"); }
+    } else if (!store) {
+      currentStoreId = null;
+      $("requestPanel").classList.remove("hidden");
+      showMessage("storeRequestMessage", "Akaunti imeingia. Weka jina la duka na utume ombi la idhini.");
+    } else {
+      const expiry = store.access_expires_at ? new Date(store.access_expires_at) : null;
+      if (store.access_status === "suspended" || store.access_status === "rejected" || (expiry && expiry < new Date())) {
+        currentStoreId = null;
+        $("requestPanel").classList.remove("hidden");
+        const reason = store.access_status === "suspended" ? "Duka limesimamishwa na Super Admin." : store.access_status === "rejected" ? "Ombi la duka limekataliwa." : "Muda wa matumizi ya duka umeisha.";
+        showMessage("storeRequestMessage", reason + " Wasiliana na Super Admin.", true);
+      } else {
+        currentStoreId = store.id;
+        $("appPanel").classList.remove("hidden");
+        $("storeHeaderName").textContent = store.name + " · Mfumo wa Mauzo na Stoo";
+        $("currentStoreLabel").textContent = "Duka: " + store.name;
+        document.title = "Mallya POS - " + store.name;
+        $("welcome").textContent = "Karibu, " + (currentUser.email || "Mtumiaji") + " · " + store.name;
+        await refreshAll();
+        showPage("home");
+      }
+    }
+  } catch (error) {
+    showMessage("loginMessage", "Imeshindikana kuingia: " + error.message, true);
+  } finally {
+    if (button) button.disabled = false;
+  }
+});
+
+$("logoutBtn").addEventListener("click", async () => {
+  await db.auth.signOut();
+  currentUser = null;
+  currentStoreId = null;
+  currentStoreName = "";
+  products = [];
+  cart = [];
+  $("appPanel").classList.add("hidden");
+  $("requestPanel").classList.add("hidden");
+  $("adminPage").classList.add("hidden");
+  $("adminNavBtn").classList.add("hidden");
+  $("loginPanel").classList.remove("hidden");
+});
+
+// Bidhaa
+async function loadProducts() {
+  const { data, error } = await db
+    .from("products")
+    .select("id,store_id,name,sku,unit,cost_price,selling_price,stock_qty,min_stock,created_at")
+    .eq("store_id", currentStoreId)
+    .order("name");
+  if (error) throw error;
+  products = data || [];
+}
+
+$("productForm").addEventListener("submit", async event => {
+  event.preventDefault();
+  clearMessage("productMessage");
+
+  const name = $("productName").value.trim();
+  const sku = $("productSku").value.trim();
+  const cost = Number($("productCost").value);
+  const price = Number($("productPrice").value);
+  const stock = Number($("productStock").value);
+  const minStock = Number($("productMin").value);
+
+  if (!name || cost < 0 || price < 0 || stock < 0 || minStock < 0) {
+    showMessage("productMessage", "Kagua taarifa za bidhaa.", true);
+    return;
+  }
+
+  try {
+    const { error } = await db.from("products").insert({
+      store_id: currentStoreId,
+      name,
+      sku: sku || null,
+      unit: $("productUnit").value.trim() || "pcs",
+      cost_price: cost,
+      selling_price: price,
+      stock_qty: stock,
+      min_stock: minStock
+    });
+    if (error) throw error;
+
+    $("productForm").reset();
+    $("productUnit").value = "pcs";
+    $("productMin").value = "5";
+    showMessage("productMessage", "Bidhaa imehifadhiwa.");
+    await refreshAll();
+  } catch (error) {
+    showMessage("productMessage", "Bidhaa haijahifadhiwa: " + error.message, true);
+  }
+});
+
+function renderProducts() {
+  const query = $("productSearch").value.trim().toLowerCase();
+  const list = products.filter(p =>
+    String(p.name).toLowerCase().includes(query) ||
+    String(p.sku || "").toLowerCase().includes(query)
+  );
+
+  if (!list.length) {
+    $("productsTable").innerHTML = "<p>Hakuna bidhaa zilizopatikana.</p>";
+    return;
+  }
+
+  $("productsTable").innerHTML = `
+    <table><thead><tr>
+      <th>Bidhaa</th><th>SKU</th><th>Bei ya kununua</th>
+      <th>Bei ya kuuza</th><th>Faida kwa kipande</th><th>% Faida</th><th>Stoo</th><th>Tahadhari</th>
+    </tr></thead><tbody>
+    ${list.map(p => `<tr>
+      <td>${safe(p.name)}</td><td>${safe(p.sku || "-")}</td>
+      <td>${money(p.cost_price)}</td><td>${money(p.selling_price)}</td>
+      <td>${money(Number(p.selling_price) - Number(p.cost_price))}</td>
+      <td>${Number(p.selling_price) > 0 ? (((Number(p.selling_price) - Number(p.cost_price)) / Number(p.selling_price)) * 100).toFixed(1) + "%" : "—"}</td>
+      <td>${Number(p.stock_qty)} ${safe(p.unit)}</td>
+      <td>${Number(p.stock_qty) <= Number(p.min_stock) ? "Stoo ndogo" : "Inatosha"}</td>
+    </tr>`).join("")}
+    </tbody></table>`;
+}
+
+$("productSearch").addEventListener("input", renderProducts);
+
+// Orodha ya mauzo
+function renderProductOptions() {
+  const select = $("saleProduct");
+  const previous = select.value;
+  select.innerHTML = '<option value="">-- Chagua bidhaa --</option>' +
+    products.filter(p => Number(p.stock_qty) > 0).map(p =>
+      `<option value="${safe(p.id)}">${safe(p.name)} — ${money(p.selling_price)} (Stoo: ${Number(p.stock_qty)})</option>`
+    ).join("");
+  if (products.some(p => String(p.id) === previous && Number(p.stock_qty) > 0)) {
+    select.value = previous;
+  }
+}
+
+$("cartForm").addEventListener("submit", event => {
+  event.preventDefault();
+  clearMessage("salesMessage");
+  const product = products.find(p => String(p.id) === $("saleProduct").value);
+  const qty = Number($("saleQty").value);
+
+  if (!product || !Number.isFinite(qty) || qty <= 0) {
+    showMessage("salesMessage", "Chagua bidhaa na weka idadi sahihi.", true);
+    return;
+  }
+
+  const existing = cart.find(item => String(item.product.id) === String(product.id));
+  const newQty = qty + (existing ? existing.quantity : 0);
+  if (newQty > Number(product.stock_qty)) {
+    showMessage("salesMessage", "Stoo haitoshi. Iliyopo: " + product.stock_qty, true);
+    return;
+  }
+
+  if (existing) existing.quantity = newQty;
+  else cart.push({ product, quantity: qty });
+
+  $("saleQty").value = "1";
+  renderCart();
+});
+
+function cartTotal() {
+  return cart.reduce((sum, item) => sum + item.quantity * Number(item.product.selling_price), 0);
+}
+
+function renderCart() {
+  $("cartTotal").textContent = money(cartTotal());
+  $("amountPaid").value = cartTotal().toFixed(2);
+
+  if (!cart.length) {
+    $("cartTable").innerHTML = "<p>Hakuna bidhaa kwenye mauzo bado.</p>";
+    return;
+  }
+
+  $("cartTable").innerHTML = `
+    <table><thead><tr><th>Bidhaa</th><th>Idadi</th><th>Bei</th><th>Jumla</th><th>Faida</th><th>% Faida</th><th></th></tr></thead>
+    <tbody>${cart.map((item, i) => `<tr>
+      <td>${safe(item.product.name)}</td>
+      <td>${item.quantity}</td>
+      <td>${money(item.product.selling_price)}</td>
+      <td>${money(item.quantity * Number(item.product.selling_price))}</td>
+      <td>${money(item.quantity * (Number(item.product.selling_price) - Number(item.product.cost_price)))}</td>
+      <td>${Number(item.product.selling_price) > 0 ? (((Number(item.product.selling_price) - Number(item.product.cost_price)) / Number(item.product.selling_price)) * 100).toFixed(1) + "%" : "—"}</td>
+      <td><button type="button" class="danger" onclick="removeCartItem(${i})">Ondoa</button></td>
+    </tr>`).join("")}</tbody></table>`;
+}
+
+window.removeCartItem = index => {
+  cart.splice(index, 1);
+  renderCart();
+};
+
+// Kamilisha mauzo
+$("checkoutForm").addEventListener("submit", async event => {
+  event.preventDefault();
+  clearMessage("salesMessage");
+
+  if (!cart.length) {
+    showMessage("salesMessage", "Ongeza angalau bidhaa moja.", true);
+    return;
+  }
+
+  const total = cartTotal();
+  const paid = Number($("amountPaid").value);
+  const customerName = $("customerName").value.trim();
+
+  if (!Number.isFinite(paid) || paid < 0 || paid > total) {
+    showMessage("salesMessage", "Kiasi kilicholipwa si sahihi; hakiwezi kuzidi jumla ya mauzo.", true);
+    return;
+  }
+  if (paid < total && !customerName) {
+    showMessage("salesMessage", "Tafadhali andika jina la mteja kabla ya kurekodi deni.", true);
+    $("customerName").focus();
+    return;
+  }
+
+  // Hakiki stoo upya kabla ya kuanza kurekodi.
+  for (const item of cart) {
+    const { data, error } = await db.from("products")
+      .select("id,name,stock_qty,cost_price,selling_price")
+      .eq("id", item.product.id)
+      .eq("store_id", currentStoreId)
+      .maybeSingle();
+
+    if (error || !data) {
+      showMessage("salesMessage", "Imeshindikana kuthibitisha stoo ya " + item.product.name + ". Hakuna mauzo yaliyorekodiwa.", true);
+      return;
+    }
+    if (Number(data.stock_qty) < item.quantity) {
+      showMessage("salesMessage", "Stoo ya " + data.name + " haitoshi. Sasisha bidhaa kisha jaribu tena.", true);
+      await refreshAll();
+      return;
+    }
+    item.product = data;
+  }
+
+  const button = event.submitter;
+  if (button) button.disabled = true;
+  let createdSale = null;
+
+  try {
+    const receiptNo = "JMS-" + Date.now().toString();
+
+ 
+    const { data: sale, error: saleError } = await db.rpc(
+      "process_sale",
+      {
+        p_store_id: currentStoreId,
+        p_payment_method: $("paymentMethod").value,
+        p_amount_paid: paid,
+        p_items: cart.map(item => ({
+          product_id: item.product.id,
+          quantity: item.quantity
+        }))
+      }
+    );
+
+    if (saleError) throw saleError;
+
+    // Hifadhi jina kwenye rekodi ya mauzo ili lionekane pia kwenye madeni na historia.
+    if (customerName) {
+      const { error: customerNameError } = await db.from("sales")
+        .update({ customer_name: customerName })
+        .eq("id", sale.id)
+        .eq("store_id", currentStoreId);
+      if (customerNameError) throw customerNameError;
+    }
+
+    const saleForReceipt = {
+      ...sale,
+      customer_name: customerName || sale.customer_name || "",
+      created_at: sale.created_at || new Date().toISOString()
+    };
+
+    createdSale = saleForReceipt;
+
+    lastReceipt = {
+      sale: saleForReceipt,
+      items: cart.map(item => ({
+        name: item.product.name,
+        quantity: item.quantity,
+        unit: item.product.unit,
+        price: Number(item.product.selling_price),
+        cost: Number(item.product.cost_price),
+        lineTotal: item.quantity * Number(item.product.selling_price)
+      }))
+    };
+
+    renderReceipt(lastReceipt);
+    cart = [];
+    renderCart();
+    $("customerName").value = "";
+
+    showMessage(
+      "salesMessage",
+      "Mauzo yamehifadhiwa. Namba ya risiti: " +
+      saleForReceipt.receipt_no
+    );
+
+    await refreshAll();
+    await loadRecentSales();
+
+  } catch (error) {
+    showMessage("salesMessage", error.message, true);
+    if (createdSale) {
+      showMessage("salesMessage",
+        error.message + " | Namba ya mauzo iliyoundwa: " + createdSale.receipt_no +
+        ". Kagua rekodi na stoo kabla ya kujaribu tena.", true);
+    }
+  } finally {
+    if (button) button.disabled = false;
+  }
+});
+
+function renderReceipt(receipt) {
+  const sale = receipt.sale;
+  $("receipt").innerHTML = `
+    <h3>${safe(currentStoreName || "Mallya POS")}</h3>
+    <p style="text-align:center">RISITI YA MAUZO</p>
+    <hr>
+    <p><b>Risiti:</b> ${safe(sale.receipt_no)}</p>
+    <p><b>Mteja:</b> ${safe(sale.customer_name || "Jina halijawekwa")}</p>
+    <p><b>Tarehe:</b> ${safe(dateText(sale.created_at))}</p>
+    <p><b>Muuzaji:</b> ${safe(currentUser.email)}</p>
+    <hr>
+    <table><thead><tr><th>Bidhaa</th><th>Idadi</th><th>Jumla</th></tr></thead>
+    <tbody>${receipt.items.map(item => `<tr>
+      <td>${safe(item.name)}</td>
+      <td>${item.quantity} ${safe(item.unit || "")}</td>
+      <td>${money(item.lineTotal)}</td>
+    </tr>`).join("")}</tbody></table>
+    <hr>
+    <p><b>Jumla:</b> ${money(sale.total_amount)}</p>
+    <p><b>Imelipwa:</b> ${money(sale.amount_paid)}</p>
+    <p><b>Salio la mteja:</b> ${money(Math.max(0, Number(sale.total_amount) - Number(sale.amount_paid)))}</p>
+    <p><b>Njia ya malipo:</b> ${safe(sale.payment_method)}</p>
+    <hr>
+    <p style="text-align:center">Asante kwa kununua kwetu!</p>`;
+}
+
+// Mauzo ya karibuni
+async function loadRecentSales() {
+  const { data, error } = await db.from("sales")
+    .select("id,receipt_no,customer_name,total_amount,amount_paid,payment_method,status,created_at")
+    .eq("store_id", currentStoreId)
+    .order("created_at", { ascending: false })
+    .limit(20);
+
+  if (error) {
+    $("recentSales").textContent = "Imeshindikana kupakia mauzo: " + error.message;
+    return;
+  }
+
+  salesCache = data || [];
+  if (!salesCache.length) {
+    $("recentSales").innerHTML = "<p>Bado hakuna mauzo.</p>";
+    return;
+  }
+
+  const saleIds = salesCache.map(s => s.id);
+  const { data: saleItems, error: itemsError } = await db.from("sale_items")
+    .select("sale_id,quantity,unit_price,unit_cost,line_total")
+    .eq("store_id", currentStoreId)
+    .in("sale_id", saleIds);
+  if (itemsError) {
+    $("recentSales").innerHTML = "Imeshindikana kuhesabu faida za mauzo: " + safe(itemsError.message);
+    return;
+  }
+  const profits = {};
+  (saleItems || []).forEach(item => {
+    const revenue = Number(item.line_total ?? (Number(item.quantity || 0) * Number(item.unit_price || 0)));
+    const cost = Number(item.quantity || 0) * Number(item.unit_cost || 0);
+    profits[item.sale_id] = (profits[item.sale_id] || 0) + revenue - cost;
+  });
+
+  $("recentSales").innerHTML = `<table><thead><tr>
+    <th>Risiti</th><th>Mteja</th><th>Tarehe</th><th>Jumla</th><th>Faida</th><th>% Faida</th><th>Imelipwa</th><th>Hali</th>
+    </tr></thead><tbody>${salesCache.map(s => {
+      const profit = Number(profits[s.id] || 0);
+      const margin = Number(s.total_amount || 0) > 0 ? (profit / Number(s.total_amount)) * 100 : 0;
+      return `<tr><td>${safe(s.receipt_no)}</td><td>${safe(s.customer_name || "Jina halijawekwa")}</td><td>${safe(dateText(s.created_at))}</td>
+      <td>${money(s.total_amount)}</td><td>${money(profit)}</td><td>${margin.toFixed(1)}%</td><td>${money(s.amount_paid)}</td>
+      <td>${safe(s.status)}</td></tr>`;
+    }).join("")}</tbody></table>`;
+}
+
+// Madeni ya wateja na malipo ya madeni
+let debtsCache = [];
+
+async function loadDebts() {
+  if (!currentStoreId) return;
+  $("debtsTable").innerHTML = "<p>Inapakia madeni...</p>";
+  try {
+    const { data, error } = await db.from("sales")
+      .select("id,receipt_no,customer_name,total_amount,amount_paid,payment_method,status,created_at")
+      .eq("store_id", currentStoreId)
+      .eq("status", "completed")
+      .order("created_at", { ascending: false })
+      .limit(500);
+    if (error) throw error;
+    debtsCache = (data || []).filter(s =>
+      Number(s.total_amount || 0) - Number(s.amount_paid || 0) > 0.000001
+    );
+    renderDebts();
+  } catch (error) {
+    $("debtsTable").textContent = "Madeni hayakuweza kupakiwa: " + error.message;
+  }
+}
+
+function renderDebts() {
+  const totalBalance = debtsCache.reduce((sum, s) =>
+    sum + Math.max(0, Number(s.total_amount || 0) - Number(s.amount_paid || 0)), 0);
+  $("debtsSummary").innerHTML = `<div class="stats">
+    <div class="stat"><small>Wateja wenye deni</small><strong>${debtsCache.length}</strong></div>
+    <div class="stat"><small>Jumla ya madeni yaliyobaki</small><strong>${money(totalBalance)}</strong></div>
+  </div>`;
+  if (!debtsCache.length) {
+    $("debtsTable").innerHTML = "<p>Hakuna deni lililobaki kwa sasa.</p>";
+    return;
+  }
+  $("debtsTable").innerHTML = `<table><thead><tr>
+    <th>Mteja</th><th>Risiti / Tarehe</th><th>Jumla</th><th>Imelipwa</th><th>Deni</th><th>Malipo mapya</th><th>Njia</th><th>Hatua</th>
+    </tr></thead><tbody>${debtsCache.map(s => {
+      const balance = Math.max(0, Number(s.total_amount || 0) - Number(s.amount_paid || 0));
+      return `<tr>
+        <td>${s.customer_name ? safe(s.customer_name) : `<input type="text" id="debt-customer-${safe(s.id)}" placeholder="Jina la mteja">`}<br>${!s.customer_name ? `<button type="button" data-save-customer="${safe(s.id)}">Hifadhi jina</button>` : ""}</td>
+        <td>${safe(s.receipt_no)}<br>${safe(dateText(s.created_at))}</td>
+        <td>${money(s.total_amount)}</td><td>${money(s.amount_paid)}</td><td><b>${money(balance)}</b></td>
+        <td><input type="number" min="0.01" max="${balance}" step="any" id="debt-amount-${safe(s.id)}" placeholder="Kiasi"></td>
+        <td><select id="debt-method-${safe(s.id)}"><option value="cash">Taslimu</option><option value="mobile_money">Mobile Money</option><option value="bank">Benki</option></select></td>
+        <td><button type="button" data-record-debt="${safe(s.id)}">Rekodi malipo</button></td>
+      </tr>`;
+    }).join("")}</tbody></table>`;
+}
+
+$("refreshDebtsBtn").addEventListener("click", loadDebts);
+
+$("debtsTable").addEventListener("click", async event => {
+  const saveNameButton = event.target.closest("[data-save-customer]");
+  if (saveNameButton) {
+    const saleId = saveNameButton.dataset.saveCustomer;
+    const nameInput = $("debt-customer-" + saleId);
+    const customerName = nameInput.value.trim();
+    if (!customerName) { showMessage("debtMessage", "Andika jina la mteja kwanza.", true); return; }
+    saveNameButton.disabled = true;
+    try {
+      const { error } = await db.from("sales").update({ customer_name: customerName })
+        .eq("id", saleId).eq("store_id", currentStoreId);
+      if (error) throw error;
+      showMessage("debtMessage", "Jina la mteja limehifadhiwa.");
+      await loadDebts();
+      await loadRecentSales();
+    } catch (error) {
+      showMessage("debtMessage", "Jina halijahifadhiwa: " + error.message, true);
+      saveNameButton.disabled = false;
+    }
+    return;
+  }
+  const button = event.target.closest("[data-record-debt]");
+  if (!button) return;
+  const saleId = button.dataset.recordDebt;
+  const amountInput = $("debt-amount-" + saleId);
+  const methodSelect = $("debt-method-" + saleId);
+  const amount = Number(amountInput.value);
+  const sale = debtsCache.find(s => String(s.id) === String(saleId));
+  if (!sale) {
+    showMessage("debtMessage", "Mauzo haya hayapatikani. Sasisha madeni.", true);
+    return;
+  }
+  const balance = Math.max(0, Number(sale.total_amount || 0) - Number(sale.amount_paid || 0));
+  if (!Number.isFinite(amount) || amount <= 0 || amount > balance) {
+    showMessage("debtMessage", "Weka kiasi sahihi kisichozidi deni lililobaki (" + money(balance) + ").", true);
+    return;
+  }
+  button.disabled = true;
+  clearMessage("debtMessage");
+  try {
+    const { data, error } = await db.rpc("record_debt_payment", {
+      p_store_id: currentStoreId,
+      p_sale_id: saleId,
+      p_amount: amount,
+      p_payment_method: methodSelect.value
+    });
+    if (error) throw error;
+    showMessage("debtMessage", "Malipo yamehifadhiwa. Jumla iliyolipwa: " +
+      money(data?.amount_paid) + "; deni lililobaki: " + money(data?.balance));
+    await loadDebts();
+    await refreshAll();
+  } catch (error) {
+    showMessage("debtMessage", "Malipo hayakuhifadhiwa: " + error.message, true);
+  } finally {
+    button.disabled = false;
+  }
+});
+
+// Matumizi
+$("expenseForm").addEventListener("submit", async event => {
+  event.preventDefault();
+  clearMessage("expenseMessage");
+  const amount = Number($("expenseAmount").value);
+
+  if (!Number.isFinite(amount) || amount <= 0) {
+    showMessage("expenseMessage", "Weka kiasi sahihi cha matumizi.", true);
+    return;
+  }
+
+  try {
+    const { error } = await db.from("expenses").insert({
+      store_id: currentStoreId,
+      description: $("expenseDescription").value.trim(),
+      category: $("expenseCategory").value.trim(),
+      amount,
+      recorded_by: currentUser.id
+    });
+    if (error) throw error;
+
+    $("expenseForm").reset();
+    showMessage("expenseMessage", "Matumizi yamehifadhiwa.");
+    await refreshAll();
+  } catch (error) {
+    showMessage("expenseMessage", "Matumizi hayajahifadhiwa: " + error.message, true);
+  }
+});
+
+async function loadExpenses() {
+  const { data, error } = await db.from("expenses")
+    .select("id,description,category,amount,recorded_by,created_at")
+    .eq("store_id", currentStoreId)
+    .order("created_at", { ascending: false })
+    .limit(200);
+
+  if (error) throw error;
+  expensesCache = data || [];
+}
+
+function renderExpenses() {
+  if (!expensesCache.length) {
+    $("expensesTable").innerHTML = "<p>Bado hakuna matumizi.</p>";
+    return;
+  }
+
+  $("expensesTable").innerHTML = `<table><thead><tr>
+    <th>Tarehe</th><th>Maelezo</th><th>Aina</th><th>Kiasi</th>
+    </tr></thead><tbody>${expensesCache.map(e => `<tr>
+    <td>${safe(dateText(e.created_at))}</td><td>${safe(e.description)}</td>
+    <td>${safe(e.category)}</td><td>${money(e.amount)}</td>
+    </tr>`).join("")}</tbody></table>`;
+}
+
+// Muhtasari na stoo ndogo
+function renderHome() {
+  $("statProducts").textContent = products.length;
+  const completed = salesCache.filter(s => s.status === "completed");
+  $("statSales").textContent = money(completed.reduce((sum, s) => sum + Number(s.total_amount || 0), 0));
+  $("statExpenses").textContent = money(expensesCache.reduce((sum, e) => sum + Number(e.amount || 0), 0));
+
+  $("lowStock").innerHTML = products.filter(p => Number(p.stock_qty) <= Number(p.min_stock)).length
+    ? `<div class="table-wrap"><table><thead><tr><th>Bidhaa</th><th>Stoo</th><th>Kiwango cha chini</th></tr></thead><tbody>
+    ${products.filter(p => Number(p.stock_qty) <= Number(p.min_stock)).map(p => `<tr>
+    <td>${safe(p.name)}</td><td>${Number(p.stock_qty)}</td><td>${Number(p.min_stock)}</td></tr>`).join("")}
+    </tbody></table></div>`
+    : "<p>Hakuna bidhaa zilizo chini ya kiwango cha tahadhari.</p>";
+
+  // Hii ni faida ya makadirio: jumla ya mauzo ukiondoa gharama ya bidhaa zilizouzwa na matumizi.
+  calculateOverallProfit().then(profit => {
+    $("statProfit").textContent = money(profit);
+  }).catch(() => {
+    $("statProfit").textContent = "Haipatikani";
+  });
+}
+
+async function calculateOverallProfit() {
+  const completed = salesCache.filter(s => s.status === "completed");
+  if (!completed.length) return -expensesCache.reduce((sum, e) => sum + Number(e.amount || 0), 0);
+
+  const ids = completed.map(s => s.id);
+  const { data, error } = await db.from("sale_items")
+    .select("sale_id,quantity,unit_cost")
+    .in("sale_id", ids);
+
+  if (error) throw error;
+  const cost = (data || []).reduce((sum, item) =>
+    sum + Number(item.quantity) * Number(item.unit_cost), 0);
+  const revenue = completed.reduce((sum, s) => sum + Number(s.total_amount || 0), 0);
+  const expenses = expensesCache.reduce((sum, e) => sum + Number(e.amount || 0), 0);
+  return revenue - cost - expenses;
+}
+
+// Ripoti
+// Hurejesha rekodi zote kwa kurasa ili ripoti isikome kwenye kikomo cha Supabase.
+async function fetchAllRows(makeQuery, pageSize = 500) {
+  const rows = [];
+  for (let offset = 0; ; offset += pageSize) {
+    const { data, error } = await makeQuery()
+      .range(offset, offset + pageSize - 1);
+    if (error) throw error;
+    const page = data || [];
+    rows.push(...page);
+    if (page.length < pageSize) break;
+  }
+  return rows;
+}
+
+function startOfPeriod(period) {
+  const now = new Date();
+  const start = new Date(now);
+  start.setHours(0, 0, 0, 0);
+
+  if (period === "today") return start;
+  if (period === "week") {
+    // Wiki ya kalenda: Jumatatu hadi Jumapili.
+    const daysSinceMonday = (start.getDay() + 6) % 7;
+    start.setDate(start.getDate() - daysSinceMonday);
+    return start;
+  }
+  if (period === "month") {
+    start.setDate(1);
+    return start;
+  }
+  if (period === "year") {
+    start.setMonth(0, 1);
+    return start;
+  }
+  return null;
+}
+
+function endOfPeriodExclusive(period) {
+  const start = startOfPeriod(period);
+  if (!start) return null;
+  const end = new Date(start);
+  if (period === "today") end.setDate(end.getDate() + 1);
+  else if (period === "week") end.setDate(end.getDate() + 7);
+  else if (period === "month") end.setMonth(end.getMonth() + 1);
+  else if (period === "year") end.setFullYear(end.getFullYear() + 1);
+  return end;
+}
+
+async function makeReport() {
+  if (!currentStoreId) return;
+  $("reportSummary").innerHTML = "<p>Inatengeneza ripoti...</p>";
+  $("reportSales").innerHTML = "";
+  $("reportCollections").innerHTML = "";
+  $("topProductsReport").innerHTML = "";
+
+  try {
+    const period = $("reportPeriod").value;
+    const start = startOfPeriod(period);
+    const end = endOfPeriodExclusive(period);
+    const inPeriod = value => {
+      const date = new Date(value);
+      return (!start || date >= start) && (!end || date < end);
+    };
+
+    // Tunahitaji mauzo yote ili kutofautisha malipo ya awali na malipo ya deni yaliyorekodiwa baadaye.
+    const allSales = (await fetchAllRows(() => db.from("sales")
+      .select("id,receipt_no,customer_name,total_amount,amount_paid,status,created_at")
+      .eq("store_id", currentStoreId)
+      .eq("status", "completed")
+      .order("created_at", { ascending: false })));
+    const sales = allSales.filter(s => inPeriod(s.created_at));
+
+    const expenses = await fetchAllRows(() => {
+      let query = db.from("expenses")
+        .select("id,description,category,amount,created_at")
+        .eq("store_id", currentStoreId)
+        .order("created_at", { ascending: false });
+      if (start) query = query.gte("created_at", start.toISOString());
+      if (end) query = query.lt("created_at", end.toISOString());
+      return query;
+    });
+
+    const allDebtPayments = await fetchAllRows(() => db.from("debt_payments")
+      .select("id,sale_id,amount,payment_method,created_at")
+      .eq("store_id", currentStoreId)
+      .order("created_at", { ascending: false }));
+    const ledgerPaidBySale = {};
+    allDebtPayments.forEach(payment => {
+      ledgerPaidBySale[payment.sale_id] = (ledgerPaidBySale[payment.sale_id] || 0) + Number(payment.amount || 0);
+    });
+    const periodDebtPayments = allDebtPayments.filter(payment => inPeriod(payment.created_at));
+
+    const totalSales = sales.reduce((sum, s) => sum + Number(s.total_amount || 0), 0);
+    const totalExpenses = expenses.reduce((sum, e) => sum + Number(e.amount || 0), 0);
+
+    let cost = 0;
+    let items = [];
+    if (sales.length) {
+      const saleIds = sales.map(s => s.id);
+      items = await fetchAllRows(() => db.from("sale_items")
+        .select("sale_id,product_id,quantity,unit_price,unit_cost,line_total")
+        .eq("store_id", currentStoreId)
+        .in("sale_id", saleIds));
+      cost = items.reduce((sum, item) =>
+        sum + Number(item.quantity || 0) * Number(item.unit_cost || 0), 0);
+    }
+
+    // Fedha za awali huhesabiwa tarehe mauzo yalipofanyika; malipo ya deni huhesabiwa tarehe yalipopokelewa.
+    const collectionRows = [];
+    sales.forEach(sale => {
+      const initialPaid = Math.max(0, Number(sale.amount_paid || 0) - Number(ledgerPaidBySale[sale.id] || 0));
+      if (initialPaid > 0) collectionRows.push({
+        sale_id: sale.id, receipt_no: sale.receipt_no, customer_name: sale.customer_name,
+        created_at: sale.created_at, type: "Malipo wakati wa mauzo", amount: initialPaid
+      });
+    });
+    periodDebtPayments.forEach(payment => {
+      const sale = allSales.find(s => String(s.id) === String(payment.sale_id));
+      collectionRows.push({
+        sale_id: payment.sale_id, receipt_no: sale?.receipt_no || "-",
+        customer_name: sale?.customer_name || "Mteja", created_at: payment.created_at,
+        type: "Malipo ya deni", amount: Number(payment.amount || 0), payment_method: payment.payment_method
+      });
+    });
+    collectionRows.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    const totalCollected = collectionRows.reduce((sum, row) => sum + Number(row.amount || 0), 0);
+    const totalOutstandingDebt = allSales.reduce((sum, sale) =>
+      sum + Math.max(0, Number(sale.total_amount || 0) - Number(sale.amount_paid || 0)), 0);
+    const periodOutstandingDebt = sales.reduce((sum, sale) =>
+      sum + Math.max(0, Number(sale.total_amount || 0) - Number(sale.amount_paid || 0)), 0);
+
+    // Panga bidhaa kwa idadi iliyouzwa katika kipindi kilichochaguliwa.
+    const productIds = [...new Set(items.map(item => item.product_id).filter(Boolean))];
+    let productNames = {};
+    if (productIds.length) {
+      const productRows = await fetchAllRows(() => db.from("products")
+        .select("id,name,unit")
+        .eq("store_id", currentStoreId)
+        .in("id", productIds));
+      productNames = Object.fromEntries(productRows.map(p => [p.id, p]));
+    }
+    const productTotals = {};
+    items.forEach(item => {
+      const id = item.product_id;
+      if (!id) return;
+      if (!productTotals[id]) productTotals[id] = { quantity: 0, revenue: 0, cost: 0 };
+      productTotals[id].quantity += Number(item.quantity || 0);
+      productTotals[id].revenue += Number(item.line_total ?? (Number(item.quantity || 0) * Number(item.unit_price || 0)));
+      productTotals[id].cost += Number(item.quantity || 0) * Number(item.unit_cost || 0);
+    });
+    const bestSellers = Object.entries(productTotals).map(([id, values]) => ({
+      name: productNames[id]?.name || "Bidhaa isiyopatikana",
+      unit: productNames[id]?.unit || "",
+      ...values,
+      profit: values.revenue - values.cost
+    })).sort((a, b) => b.quantity - a.quantity || b.revenue - a.revenue);
+
+    const grossProfit = totalSales - cost;
+    const netProfit = grossProfit - totalExpenses;
+    const periodLabels = {
+      today: "Leo",
+      week: "Wiki hii (Jumatatu–Jumapili)",
+      month: "Mwezi huu",
+      year: "Mwaka huu",
+      all: "Taarifa zote"
+    };
+
+    $("reportSummary").innerHTML = `<p><b>Kipindi:</b> ${safe(periodLabels[period] || period)}</p>
+      <div class="stats">
+        <div class="stat"><small>Mauzo yaliyokamilika</small><strong>${money(totalSales)}</strong></div>
+        <div class="stat"><small>Fedha zilizokusanywa kipindi hiki</small><strong>${money(totalCollected)}</strong></div>
+        <div class="stat"><small>Madeni yote yaliyobaki sasa</small><strong>${money(totalOutstandingDebt)}</strong></div>
+        <div class="stat"><small>Salio la madeni ya mauzo ya kipindi hiki</small><strong>${money(periodOutstandingDebt)}</strong></div>
+        <div class="stat"><small>Gharama ya bidhaa zilizouzwa</small><strong>${money(cost)}</strong></div>
+        <div class="stat"><small>Faida ghafi</small><strong>${money(grossProfit)}</strong></div>
+        <div class="stat"><small>Matumizi ya kipindi</small><strong>${money(totalExpenses)}</strong></div>
+        <div class="stat"><small>Faida baada ya matumizi</small><strong>${money(netProfit)}</strong></div>
+      </div>
+      <p class="muted">Mauzo huhesabiwa tarehe bidhaa ilipouzwa. Fedha zilizokusanywa huhesabiwa tarehe malipo yalipopokelewa. Madeni yaliyobaki yanaonyesha salio la sasa. Faida baada ya matumizi = mauzo − gharama ya bidhaa − matumizi yaliyorekodiwa.</p>`;
+
+    const profitBySale = {};
+    items.forEach(item => {
+      const revenue = Number(item.line_total ?? (Number(item.quantity || 0) * Number(item.unit_price || 0)));
+      const itemCost = Number(item.quantity || 0) * Number(item.unit_cost || 0);
+      profitBySale[item.sale_id] = (profitBySale[item.sale_id] || 0) + revenue - itemCost;
+    });
+    $("reportSales").innerHTML = sales.length ? `<h3>Mauzo ya kipindi (${sales.length})</h3>
+      <table><thead><tr><th>Risiti</th><th>Tarehe ya mauzo</th><th>Jumla ya mauzo</th><th>Faida</th><th>% Faida</th><th>Imelipwa sasa</th><th>Salio sasa</th></tr></thead>
+      <tbody>${sales.map(s => {
+        const saleProfit = Number(profitBySale[s.id] || 0);
+        const margin = Number(s.total_amount || 0) > 0 ? (saleProfit / Number(s.total_amount)) * 100 : 0;
+        return `<tr><td>${safe(s.receipt_no)}</td>
+        <td>${safe(dateText(s.created_at))}</td><td>${money(s.total_amount)}</td><td>${money(saleProfit)}</td><td>${margin.toFixed(1)}%</td>
+        <td>${money(s.amount_paid)}</td>
+        <td>${money(Math.max(0, Number(s.total_amount || 0) - Number(s.amount_paid || 0)))}</td></tr>`;
+      }).join("")}</tbody></table>`
+      : "<p>Hakuna mauzo yaliyokamilika katika kipindi hiki.</p>";
+
+    $("reportCollections").innerHTML = `<h3>Fedha zilizokusanywa kipindi hiki (${collectionRows.length} rekodi)</h3>` +
+      (collectionRows.length ? `<table><thead><tr><th>Tarehe ya malipo</th><th>Mteja</th><th>Risiti</th><th>Aina ya malipo</th><th>Kiasi</th></tr></thead>
+      <tbody>${collectionRows.map(row => `<tr><td>${safe(dateText(row.created_at))}</td>
+      <td>${safe(row.customer_name || "Mteja")}</td><td>${safe(row.receipt_no || "-")}</td>
+      <td>${safe(row.type)}</td><td>${money(row.amount)}</td></tr>`).join("")}</tbody></table>`
+      : "<p>Hakuna malipo yaliyokusanywa katika kipindi hiki.</p>");
+
+    $("topProductsReport").innerHTML = bestSellers.length ? `<h3>Bidhaa zinazouzwa zaidi</h3>
+      <p class="muted">Zimepangwa kwa idadi iliyouzwa, kuanzia nyingi zaidi. Faida hapa ni kabla ya kutoa matumizi ya biashara.</p>
+      <table><thead><tr><th>Bidhaa</th><th>Idadi iliyouzwa</th><th>Mapato</th><th>Gharama</th><th>Faida ghafi</th></tr></thead>
+      <tbody>${bestSellers.map(p => `<tr><td>${safe(p.name)}</td>
+      <td>${p.quantity} ${safe(p.unit)}</td><td>${money(p.revenue)}</td>
+      <td>${money(p.cost)}</td><td>${money(p.profit)}</td></tr>`).join("")}</tbody></table>`
+      : "<h3>Bidhaa zinazouzwa zaidi</h3><p>Bado hakuna bidhaa zilizouzwa katika kipindi hiki.</p>";
+  } catch (error) {
+    $("reportSummary").innerHTML = "";
+    $("reportSales").textContent = "Ripoti haikuweza kutengenezwa: " + error.message;
+    $("reportCollections").textContent = "Ripoti ya makusanyo haikuweza kutengenezwa.";
+    $("topProductsReport").textContent = "Ripoti ya bidhaa haikuweza kutengenezwa.";
+  }
+}
+$("loadReportBtn").addEventListener("click", makeReport);
+$("reportPeriod").addEventListener("change", makeReport);
+
+async function refreshAll() {
+  if (!currentStoreId) return;
+  try {
+    await Promise.all([loadProducts(), loadExpenses()]);
+    const { data, error } = await db.from("sales")
+      .select("id,receipt_no,customer_name,total_amount,amount_paid,payment_method,status,created_at")
+      .eq("store_id", currentStoreId)
+      .order("created_at", { ascending: false })
+      .limit(200);
+    if (error) throw error;
+    salesCache = data || [];
+    renderProducts();
+    renderProductOptions();
+    renderExpenses();
+    renderHome();
+  } catch (error) {
+    alert("Imeshindikana kupakia taarifa: " + error.message);
+  }
+}
+
+// Maombi ya duka kwa akaunti isiyo na duka
+$("storeRequestForm").addEventListener("submit", async event => {
+  event.preventDefault();
+  const btn = $("sendStoreRequestBtn"); btn.disabled = true;
+  try {
+    const { data, error } = await db.rpc("request_mallya_store", { p_store_name: $("requestedStoreName").value.trim() });
+    if (error) throw error;
+    showMessage("storeRequestMessage", "Ombi limetumwa kwa mafanikio. Subiri Super Admin aidhinishe.");
+    $("requestedStoreName").value = "";
+  } catch (error) { showMessage("storeRequestMessage", "Ombi halikutumwa: " + error.message, true); }
+  finally { btn.disabled = false; }
+});
+
+function setAdminMessage(id, message, isError=false) {
+  const el = $(id); if (!el) return;
+  el.className = "message " + (isError ? "error" : "success");
+  el.textContent = message;
+}
+
+async function loadRegistrationProfiles() {
+  const target = $("registrationProfilesTable"); if (!target || !currentUser) return;
+  target.textContent = "Inapakia taarifa za waliojisajili...";
+  try {
+    const { data, error } = await db.rpc("mallya_admin_list_registration_profiles");
+    if (error) throw error;
+    if (!data?.length) { target.textContent = "Hakuna taarifa za usajili zilizopatikana."; return; }
+    target.innerHTML = `<table><thead><tr><th>Email</th><th>Jina la duka</th><th>Mmiliki</th><th>Aina ya biashara</th><th>Eneo</th><th>Muda ulioombwa</th><th>Email imethibitishwa?</th><th>Tarehe</th></tr></thead><tbody>${data.map(r => `<tr><td>${safe(r.email||"")}</td><td>${safe(r.store_name||"")}</td><td>${safe(r.owner_name||"")}</td><td>${safe(r.business_type||"")}</td><td>${safe(r.business_location||"")}</td><td>${safe(String(r.requested_duration_days||30))} siku</td><td>${r.email_confirmed ? "Ndiyo" : "Bado"}</td><td>${r.created_at ? dateText(r.created_at) : "—"}</td></tr>`).join("")}</tbody></table>`;
+  } catch (error) {
+    target.textContent = "Taarifa hazijapakiwa: " + error.message + ". Hakikisha SQL ya usajili imeendeshwa Supabase.";
+  }
+}
+window.loadRegistrationProfiles = loadRegistrationProfiles;
+
+async function loadAdminRequests() {
+  const target = $("adminRequestsTable"); if (!target || !currentUser) return;
+  target.textContent = "Inapakia maombi...";
+  const { data, error } = await db.from("store_access_requests")
+    .select("id,owner_id,store_name,status,requested_at,admin_note")
+    .order("requested_at", { ascending: false }).limit(200);
+  if (error) { target.textContent = "Maombi hayajapakiwa: " + error.message; return; }
+  if (!data?.length) { target.textContent = "Hakuna maombi yaliyopokelewa."; return; }
+  target.innerHTML = `<table><thead><tr><th>Duka</th><th>Owner UID</th><th>Tarehe</th><th>Hali</th><th>Muda wa idhini</th><th>Maelezo</th><th>Hatua</th></tr></thead><tbody>${data.map(r => `<tr><td>${safe(r.store_name)}</td><td>${safe(r.owner_id)}</td><td>${dateText(r.requested_at)}</td><td>${safe(r.status)}</td><td><select id="days-${r.id}"><option value="30">Siku 30</option><option value="90">Siku 90</option><option value="180">Siku 180</option><option value="365">Mwaka 1</option></select></td><td><input id="note-${r.id}" placeholder="Maelezo (si lazima)" value="${safe(r.admin_note||"")}"></td><td><div class="admin-actions"><button type="button" onclick="reviewStoreRequest('${r.id}',true)">Idhinisha</button><button type="button" class="danger" onclick="reviewStoreRequest('${r.id}',false)">Kataa</button></div></td></tr>`).join("")}</tbody></table>`;
+}
+
+async function reviewStoreRequest(requestId, approve) {
+  const days = Number($("days-" + requestId)?.value || 30);
+  const note = $("note-" + requestId)?.value?.trim() || null;
+  try {
+    const { error } = await db.rpc("review_mallya_store_request", { p_request_id: requestId, p_approve: approve, p_duration_days: days, p_admin_note: note });
+    if (error) throw error;
+    setAdminMessage("adminRequestsMessage", approve ? `Ombi limeidhinishwa kwa siku ${days}.` : "Ombi limekataliwa.");
+    await loadAdminRequests(); await loadAdminStores();
+  } catch (error) { setAdminMessage("adminRequestsMessage", "Hatua haikufanikiwa: " + error.message, true); }
+}
+window.reviewStoreRequest = reviewStoreRequest;
+
+async function loadAdminStores() {
+  const target = $("adminStoresTable"); if (!target || !currentUser) return;
+  target.textContent = "Inapakia maduka...";
+  const { data, error } = await db.rpc("mallya_admin_list_stores");
+  if (error) { target.textContent = "Maduka hayajapakiwa: " + error.message; return; }
+  if (!data?.length) { target.textContent = "Hakuna duka lililopatikana."; return; }
+  target.innerHTML = `<table><thead><tr><th>Jina la duka</th><th>Hali</th><th>Muda unaisha</th><th>Owner UID</th><th>Hatua</th></tr></thead><tbody>${data.map(st => `<tr><td>${safe(st.name)}</td><td>${safe(st.access_status||"active")}</td><td>${st.access_expires_at ? dateText(st.access_expires_at) : "Hakuna tarehe ya mwisho"}</td><td>${safe(st.owner_id)}</td><td><div class="admin-actions"><select id="action-${st.id}"><option value="extend">Ongeza muda</option><option value="suspend">Simamisha</option><option value="activate">Washa tena</option></select><select id="extend-${st.id}"><option value="30">+ siku 30</option><option value="90">+ siku 90</option><option value="180">+ siku 180</option><option value="365">+ siku 365</option></select><button type="button" onclick="manageStoreAccess('${st.id}')">Tekeleza</button><button type="button" class="danger" onclick="deleteStorePermanently('${st.id}', decodeURIComponent('${encodeURIComponent(String(st.name||''))}'))">Futa kabisa</button></div></td></tr>`).join("")}</tbody></table>`;
+}
+
+async function manageStoreAccess(storeId) {
+  const action = $("action-" + storeId)?.value || "extend";
+  const days = Number($("extend-" + storeId)?.value || 30);
+  try {
+    const { error } = await db.rpc("manage_mallya_store_access", { p_store_id: storeId, p_action: action, p_extend_days: action === "extend" ? days : null });
+    if (error) throw error;
+    setAdminMessage("adminStoresMessage", action === "suspend" ? "Duka limesimamishwa." : action === "activate" ? "Duka limewashwa tena." : `Muda umeongezwa kwa siku ${days}.`);
+    await loadAdminStores();
+  } catch (error) { setAdminMessage("adminStoresMessage", "Hatua haikufanikiwa: " + error.message, true); }
+}
+window.manageStoreAccess = manageStoreAccess;
+
+// Kufuta duka: uthibitisho wa Admin kwenye UI; ruhusa halisi lazima ihakikishwe tena na RPC ya Supabase.
+async function deleteStorePermanently(storeId, storeName) {
+  try {
+    if (!currentUser) throw new Error("Ingia kwanza kama Super Admin.");
+    const { data: isAdmin, error: adminError } = await db.rpc("mallya_admin_check");
+    if (adminError) throw adminError;
+    if (isAdmin !== true) throw new Error("Huna ruhusa ya kufuta maduka.");
+
+    const typedName = prompt(`TAHADHARI: Duka “${storeName}” na taarifa zake zinaweza kufutwa kabisa. Andika jina la duka kama lilivyo ili kuendelea:`);
+    if (typedName === null) return;
+    if (typedName.trim() !== String(storeName).trim()) {
+      alert("Jina halilingani. Duka halijafutwa.");
+      return;
+    }
+    if (!confirm(`UTHIBITISHO WA MWISHO
+
+Una uhakika unataka kufuta kabisa duka “${storeName}”? Kitendo hiki hakiwezi kutenguliwa.`)) return;
+
+    const { error } = await db.rpc("mallya_delete_store", { p_store_id: storeId });
+    if (error) throw error;
+    setAdminMessage("adminStoresMessage", `Duka “${storeName}” limefutwa.`);
+    await loadAdminStores();
+    await loadAdminRequests();
+  } catch (error) {
+    setAdminMessage("adminStoresMessage", "Duka halijafutwa: " + error.message, true);
+  }
+}
+window.deleteStorePermanently = deleteStorePermanently;
+$("refreshRequestsBtn").addEventListener("click", loadAdminRequests);
+$("refreshStoresBtn").addEventListener("click", loadAdminStores);
+
+// Ikiwa ukurasa umefunguliwa na session bado ipo, mtumiaji ataingia tena kwa usalama.
+(async function checkSession() {
+  const { data } = await db.auth.getSession();
+  if (data.session) {
+    // Onyesha login ili uthibitisho wa duka ufanyike kupitia login form.
+    $("loginMessage").textContent = "Tafadhali ingia tena ili kufungua duka lako.";
+  }
+})();
+</script>
+</body>
+</html>
